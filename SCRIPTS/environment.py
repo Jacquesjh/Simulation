@@ -7,32 +7,114 @@ Created on Wed Jun 16 18:18:17 2021
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-from scipy.spatial import Voronoi
+from scipy.spatial import Voronoi, voronoi_plot_2d
 from scipy.spatial import ConvexHull
+from person import *
 
 class CommercialRegion():
     
     def __init__(self, distance, area, x, y):
         
+        self.type     = 'Commercial'
         self.color    = 'blue'
         self.distance = distance
         self.area     = area
         self.x_       = x
         self.y_       = y
+    
+class House():
+    def __init__(self, distance, color, wealth_base, area):
+        
+        self.type        = 'House'
+        self.color       = color
+        self.distance    = distance
+        self.wealth      = wealth_base
+        self.num_members = int(np.random.normal((2/wealth)*3.5/(1 + 200*pow(np.e, - pow(area, 2)/2000)) + 1, 1/wealth,  1))
+        self.members     = {}
+        
+    #def generate_members(self, wealth):
+        
+    def get_all_members(self):
+        people = []
+            
+        for member in self.members:
+            people.append(member)
+                
+        return people
+        
+    def num_state_members(self, state):
+        '''Catch the number of members in a house in the specified state
+        
+        state = 'Susceptible', 'Infected', 'Immune', 'Dead'
+        '''
+        infected = 0
+        
+        for member in self.members:
+            if member.type == 'Infected':
+                infected += 1
+            
+        return infected
+                           
+    def get_state_members(self, state):
+        '''Create a list of members in a house in the specified state
+            
+            state = 'Susceptible', 'Infected', 'Immune', 'Dead'
+        '''
+        infected = []
+            
+        for member in self.members:
+            if member.type == state:
+                infected.append(member)
+                
+        return infected
         
 class DomesticRegion():
 
-    def __init__(self, distance, area, x, y):
-        self.color    = 'green'
-        self.distance = distance
-        self.area     = area
-        self.x_       = x
-        self.y_       = y
-        self.wealth   = 
+    def __init__(self, distance, area, x, y, scale):
         
+        self.type          = 'Domestic'
+        self.color         = 'green'
+        self.distance      = distance
+        self.area          = area
+        self.x_            = x
+        self.y_            = y
+        self.wealth        = 0.8/(1 + distance*pow(np.e, - scale/area)) + 0.2
+        self.num_buildings = int(np.random.normal(area*pow(scale, 1/4), distance*pow(scale, 1/2), 1))
+        self.buildings     = {}
+        
+        
+    def get_wealth(self):
+        return self.wealth
+    
+    def get_xy(self):
+        return self.x_, self.y_
+    
+    def get_area(self):
+        return self.area
+    
+    def get_distance(self):
+        return self.distance
+    
+    def create_buildings(self):
+        for i in range(self.num_buildings):
+            building = House(self.distance, self.color, self.wealth, self.area)
+            self.buildings[i] = buildings
+    
+    def get_region_population(self):
+        region_population = []
+        for house in self.buildings:
+            members = house.get_members()
+            
+            for member in members:
+                region_population.append(member)
+                
+        return region_population
+    
 class IndustrialRegion():
 
     def __init__(self, distance, area, x, y):
+        
+        self.type     = 'Industrial'
         self.color    = 'orange'
         self.distance = distance
         self.area     = area
@@ -41,11 +123,12 @@ class IndustrialRegion():
 
 def create_regions(number_regions, scale, std):
     
-    city_center    = [scale/2, scale/2]
-    max_distance   = pow(2*scale/2, 1/2)
-    region_centers = np.random.normal(scale/2, std, (number_regions, 2))
-    region_areas   = region_area(region_centers)
-    regions        = []
+    city_center         = [scale/2, scale/2]
+    max_distance        = pow(2*scale/2, 1/2)
+    region_centers      = np.random.normal(scale/2, std, (number_regions, 2))
+    region_centers = np.append(region_centers, [[999,999], [-999,999], [999,-999], [-999,-999]], axis = 0)
+    region_areas, vor   = region_area(region_centers)
+    regions             = []
     
     for i in range(len(region_centers)):
         
@@ -56,7 +139,7 @@ def create_regions(number_regions, scale, std):
                                    pow(city_center[1] - y, 2), 1/2)
         
         ## Weights of probabilities of each type o region
-        commercial_weight = 0.8*pow(np.e, - pow(distance_from_center, 2)/(2*scale)) + 0.1
+        commercial_weight = 0.7*pow(np.e, - pow(distance_from_center, 2)/(2*scale)) + 0.1
         
         if distance_from_center < 25:
             industrial_weight = 0.1
@@ -72,7 +155,7 @@ def create_regions(number_regions, scale, std):
                                                          industrial_weight))
         
         if region_type == ['Domestic']:
-            region = DomesticRegion(distance_from_center, area, x, y)
+            region = DomesticRegion(distance_from_center, area, x, y, scale)
             regions.append(region)
             
         if region_type == ['Commercial']:
@@ -83,32 +166,47 @@ def create_regions(number_regions, scale, std):
             region = IndustrialRegion(distance_from_center, area, x, y)
             regions.append(region)
         
-    return regions
+    return regions, vor
+
+def map_regions(regions, vor):
+    
+    voronoi_plot_2d(vor, show_points=True, show_vertices=False)
+    for r in range(len(vor.point_region)):
+        region = vor.regions[vor.point_region[r]]
         
+        if regions[r].type == 'Domestic':
+            color = 'green'
+            
+        if regions[r].type == 'Commercial':
+            color = 'blue'
+            
+        if regions[r].type == 'Industrial':
+            color = 'orange'
+    
+        if not -1 in region:
+            polygon = [vor.vertices[i] for i in region]
+            plt.fill(*zip(*polygon), color = color)
+    plt.xlim((0, 100))
+    plt.ylim((0, 100))
+    plt.show()
+            
 def region_area(region_centers):
     
-    v   = Voronoi(region_centers)
-    area = np.zeros(v.npoints)
+    vor  = Voronoi(region_centers)
+    area = np.zeros(vor.npoints)
     
-    for i, reg_num in enumerate(v.point_region):
-        indices = v.regions[reg_num]
+    
+    for i, reg_num in enumerate(vor.point_region):
+        indices = vor.regions[reg_num]
         
         if -1 in indices:
             area[i] = 0
             
         else:
-            area[i] = ConvexHull(v.vertices[indices]).volume
+            area[i] = ConvexHull(vor.vertices[indices]).volume
             
     area = np.where(area == 0, np.mean(area), area)
-    return area
+    return area, vor
 
-
-region = create_regions(30, 100, 15)
-
-for each in region:
-    plt.scatter(each.x_, each.y_, color = each.color, linewidth = 7)
-
-distance = np.arange(0, 70, 1)
-area = np.arange(50, 250, 10)
-wealth = pow(np.e, - pow(pow(145, 1/2)/distance, 2))
-plt.plot(distance, wealth)
+#def create_population(region_list):
+    
