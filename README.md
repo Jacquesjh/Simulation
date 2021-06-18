@@ -8,7 +8,7 @@ We will need, basically, an environment and agents. The environment is going to
 be a city, that contains severall regions. Regions will be separated in domestic,
 industrial and commercial:
     
-    Domestic Regions: will contain the homes of our agents, our population. The
+        Domestic Regions: will contain the homes of our agents, our population. The
     amount of houses and individuals living in a single house will vary randomly, and will be
     dependent on the distance of the centroid of the region, to the center of the city,
     that will be an input to be speciffied.Further from the city center means more houses
@@ -16,20 +16,19 @@ industrial and commercial:
     an attempt to emmulate the rich and poor regions of a real city, and it's distribution.
     Each region will be initialized with a distance from the city center, and a random radius size.
 
-    Commercial Regions: this kind of region will be the place where agents commute to
+        Commercial Regions: this kind of region will be the place where agents commute to
     and spend the majority of their time and are the most exposed to be inffected.
     This type of region will contain Restaurants, Hospitals and Workplaces. Restaurants
     will contain a higher amount of agents and workplaces will contain a random number of workers.
     Hospital will contain workers and pacients and also a large amount of agents.
 
-    Industrial Regions: this type of regions will contain fewer buildings but will
+        Industrial Regions: this type of regions will contain fewer buildings but will
     have a larger concentration of workers that will spend more time together.
 
- ------------------------      #################      ------------------------
- 
+
 Our agents will be derived from the class Person:
     
-    Person: will have an object Home that will always come back to, and share with
+        Person: will have an object Home that will always come back to, and share with
     other agents Person. Will have various traits that will dictate how it will behave, 
     for example: (social) resistance(the major interest feature of this project), fanciness (dictates the
     transportation type and lunch routine, affected by domestic region type), influence (dictates how it spreds its
@@ -38,11 +37,11 @@ Our agents will be derived from the class Person:
     
 And each agents will have 5 possible states:
     
-    Susceptible: will be susceptible to be contaminated if exposed. The susceptible agent
+        Susceptible: will be susceptible to be contaminated if exposed. The susceptible agent
     will aslo have a trait called protection, which is determined by the person's resistance parameter.
     It affects the probabilty of being contaminated if exposed to an infected agent.
     
-    Infected: when infected, an agent will first spend 2~5 days (randomly) before noticing symptoms.
+        Infected: when infected, an agent will first spend 2~5 days (randomly) before noticing symptoms.
     After this time, the symptoms of the agennt will be determined by the symptoms type probability (influenced by age 
     and chroninc disease), depending on the symptoms type and others, the agent will have a pacient probability,
     which is the probability of the agent occupying a place in the hospital. The behaviour of the infect agent
@@ -61,7 +60,7 @@ And each agents will have 5 possible states:
     Pacient agents that survives this stage will have its disease factor increased by a random amount, that will lasts for some months
     representing the sequelea of the infeciton.
 
-    Immune: Immune agents will return to is regular routine, and will stay protected against the infection
+        Immune: Immune agents will return to is regular routine, and will stay protected against the infection
     for a time, 4~8 months. After that, they return to being a Susceptible agent again.
         
-    Dead: the Pacients agents that didn't survived the infection.
+        Dead: the Pacients agents that didn't survived the infection.
