@@ -132,7 +132,17 @@ def fix_vertices(vor):
             if vertices[1] > 100:
                 vertices[1] = vertices[1]/10 + 90
 
-def normal_01():
+def create_population(region_list):
+    for region in region_list:
+        if region.type == 'Domestic':
+            region.generate_region_population()
     
-#def create_population(region_list):
+def normal_01(mean, std):
     
+    result = np.random.normal(loc = mean, scale = std)
+    if result < 0:
+        result = 0
+    if result > 1:
+        result = 1
+        
+    return result
