@@ -13,6 +13,16 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from scipy.spatial import ConvexHull
 import environment
 
+
+def update_transportation(domestic_list):
+    for domestic in domestic_list:
+        domestic.update_transportation()
+        
+def update_restaurants(commercial_list):
+    for commercial in commercial_list:
+        commercial.update_restaurants()
+
+
 def generate_commercial_buildings(commercial_list, number_commercial_regions, total_population):
     for region in commercial_list:
         region.generate_buildings(number_commercial_regions, total_population)
@@ -234,24 +244,36 @@ def get_num_hospital_beds(commercial_list):
         
     return num
                 
-def update_population(population_list, risk):
+def update_population(population_list, risk, hospital_list):
     for person in population_list:
-        if person.type != 'Dead':
-            person.daily_update(risk)
+        person.daily_update(risk, hospital_list)
         
+def daily_routine(population_list, step):
+    for person in population_list:
+        person.interaction_routine(step)
+        
+
 def get_total_occupancy(commercial_list):
     occ = []
     for region in commercial_list:
         if len(region.hospitals) != 0:
-            for hospital in region.hospital:
+            for hospital in region.hospitals:
                 occ.append(hospital.get_occupancy)
                 
     return occ
 
 def get_average_occupancy(commercial_list):
-    occ = get_total_occupancy(commercial_list)
     
-    return np.mean(occ)
+    average_occupancy = 0
+    num_hospitals     = 0
+    for commercial in commercial_list:
+        for hospital in commercial.hospitals:
+            average_occupancy += hospital.get_occupancy()
+            num_hospitals     += 1
+            
+    average_occupancy = average_occupancy/num_hospitals
+    
+    return average_occupancy
 
 def get_average_fanciness(domestic_list):
     fancy = []
@@ -290,7 +312,7 @@ def get_num_state_population(domestic_list, state):
 def get_state_population(domestic_list, state):
     pop = []
     for region in domestic_list:            
-        for member in region.get_state_members:
+        for member in region.get_state_members():
             pop.append(member)
     return pop
 
@@ -314,3 +336,13 @@ def get_industrial_regions(region_list):
         if region.type == 'Industrial':
             industrial.append(region)
     return industrial
+
+
+def get_hospital_list(commercial_list):
+    hospitals = []
+    
+    for commercial in commercial_list:
+        for hospital in commercial.hospitals:
+            hospitals.append(hospital)
+            
+    return hospitals
