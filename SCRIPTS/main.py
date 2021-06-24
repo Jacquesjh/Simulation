@@ -8,23 +8,13 @@ import sys
 sys.path.append('C:/Users/Joao/Simulation')
 from utils import *
 import time
-## ----------------------- GLOBAL VARIABLES -----------------------
-'''
-global daily_deaths
-global daily_cases
-global hospital_occupancy
-global total_population
-global risk
 
-#risk               = (pow(daily_cases, 5/4) + pow(daily_deaths, 13/8))*((hospital_occupancy/total_population))
-risk E [0, 1]
-'''
 
 
 if __name__ == '__main__':
     
     # Parameters
-    number_regions = 15
+    number_regions = 35
     scale          = 100
     std            = 15
     
@@ -50,7 +40,7 @@ if __name__ == '__main__':
     num_susceptible   = get_num_state_population(domestic_list, 'Susceptible')
     num_infected      = get_num_state_population(domestic_list, 'Infected')
     num_immune        = get_num_state_population(domestic_list, 'Immune')
-    num_pacient       = get_num_state_population(domestic_list, 'Pacient')
+    num_pacients      = get_num_state_population(domestic_list, 'Pacient')
     num_dead          = get_num_state_population(domestic_list, 'Dead')
     total_population  = get_num_total_population(domestic_list)
     population_list   = get_population_list(domestic_list)
@@ -77,37 +67,43 @@ if __name__ == '__main__':
     print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
     
     ## ---------------------- CONTROL VARIABLES ----------------------
-    daily_cases        = []
-    daily_deaths       = []
-    daily_risk         = []
-    daily_occupancy    = []
-    list_susceptible   = []
-    list_infected      = []
-    list_immune        = []
-    list_pacients      = []
-    list_dead          = []
-    average_fanciness  = []
-    average_resistance = []
-    averega_age        = []
+    daily_cases              = []
+    daily_deaths             = []
+    daily_occupancy          = []
+    daily_susceptible        = []
+    daily_infected           = []
+    daily_immune             = []
+    daily_pacients           = []
+    daily_dead               = []
+    daily_average_fanciness  = []
+    daily_average_resistance = []
+    daily_averega_age        = []
     
+    
+    daily_risk               = []
     
     ## ---------------------- STARTING CONDITIONS ----------------------
     
     daily_cases.append(0)
     daily_deaths.append(0)
-    daily_risk.append(0)
     daily_occupancy.append(get_average_occupancy(commercial_list))
-    list_susceptible.append(num_susceptible)
-    list_infected.append(num_infected)
-    list_immune.append(num_immune)
-    list_pacients.append(num_pacients)
-    list_dead.append(num_dead)
-    average_fanciness.append(get_average_fanciness(domestic_list))
-    average_resistance.append(get_average_reistance(domestic_list))
+    daily_susceptible.append(num_susceptible)
+    daily_infected.append(num_infected)
+    daily_immune.append(num_immune)
+    daily_pacients.append(num_pacients)
+    daily_dead.append(num_dead)
+    daily_average_fanciness.append(get_average_fanciness(domestic_list))
+    daily_average_resistance.append(get_average_resistance(domestic_list))
+    daily_averega_age.append(get_average_age(domestic_list))
     
-    DAYS = 365
-    step = 0
-    risk = 0
+    
+    daily_risk.append(0)
+    
+    HOSPITAL_LIST = get_hospital_list(commercial_list)
+    
+    DAYS  = 365
+    steps = 7
+    
     '''
         The steps are the stages of the day of a person
             0 - staying in house
@@ -119,24 +115,58 @@ if __name__ == '__main__':
             6 - staying in house
             *Repeat
     '''
+    '''
+        To create the Pacient - ZERO
+    '''
+    
+    pacient_zero                    = random.choice(population_list)
+    pacient_zero.type               = 'Infected'
+    pacient_zero.days_till_symptoms = 4
+    
+    
+    
     for day in range(DAYS):
-        
-        update_population(population_list, risk)
+
+        print('Starting the day!')        
+        update_population(population_list, daily_risk[-1], HOSPITAL_LIST)
+        update_transportation(domestic_list)
+        update_restaurants(commercial_list)
         
         for stage in range(steps):
-            pass
+            
+            start = time.time()
+            daily_routine(population_list, stage)
+            print('Stage ' + str(stage) + ' Done!!')
+            print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
             
         ## ---------------------- End of day conditions ----------------------
         
-        daily_cases.append(0)
-        daily_deaths.append(0)
-        daily_risk.append(0)
+        new_susceptible    = get_num_state_population(domestic_list, 'Susceptible')
+        new_infected       = get_num_state_population(domestic_list, 'Infected')
+        new_immune         = get_num_state_population(domestic_list, 'Immune')
+        new_pacient        = get_num_state_population(domestic_list, 'Pacient')
+        new_dead           = get_num_state_population(domestic_list, 'Dead')
+        
+        hospital_occupancy = get_average_occupancy(commercial_list)
+        total_population   = get_num_total_population(domestic_list)
+        
+        new_cases          = new_infected - daily_infected[-1]
+        new_deaths         = new_dead - daily_dead[-1]
+        
+        risk               = (pow(new_cases, 5/4) + pow(new_deaths, 13/8))*((hospital_occupancy/total_population))
+        
+        daily_cases.append(new_cases)
+        daily_deaths.append(new_deaths)
         daily_occupancy.append(get_average_occupancy(commercial_list))
-        list_susceptible.append(num_susceptible)
-        list_infected.append(num_infected)
-        list_immune.append(num_immune)
-        list_pacients.append(num_pacients)
-        list_dead.append(num_dead)
-        average_fanciness.append(get_average_fanciness(domestic_list))
-        average_resistance.append(get_average_reistance(domestic_list))
+        daily_susceptible.append(new_susceptible)
+        daily_infected.append(new_infected)
+        daily_immune.append(new_immune)
+        daily_pacients.append(new_pacient)
+        daily_dead.append(new_dead)
+        daily_average_fanciness.append(get_average_fanciness(domestic_list))
+        daily_average_resistance.append(get_average_resistance(domestic_list))
+        daily_averega_age.append(get_average_age(domestic_list))
             
+        daily_risk.append(risk)
+        
+        break
