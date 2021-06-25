@@ -52,15 +52,15 @@ def create_population(region_list):
 def create_regions(number_regions, scale, std):
     
     city_center         = [scale/2, scale/2]
-    max_distance        = pow(2*scale/2, 1/2)
-    region_centers      = np.random.normal(scale/2, std, (number_regions - 4, 2))
+    max_distance        = pow(scale, 1/2)
+    region_centers      = np.random.normal(scale/2, std, (number_regions, 2))
     region_centers      = np.append(region_centers, [[999,999], [-999,999], [999,-999], [-999,-999]], axis = 0)
     region_areas, vor   = region_area(region_centers)
     regions             = []
     
     fix_vertices(vor)
     
-    for i in range(len(region_centers)):
+    for i in range(len(region_centers) - 4):
         
         area = region_areas[i]
         x    = region_centers[i, 0]
@@ -69,7 +69,7 @@ def create_regions(number_regions, scale, std):
                                    pow(city_center[1] - y, 2), 1/2)
         
         ## Weights of probabilities of each type o region
-        commercial_weight = 0.7*pow(np.e, - pow(distance_from_center, 2)/(2*scale)) + 0.1
+        commercial_weight = 0.6*pow(np.e, - pow(distance_from_center, 2)/(2*scale)) + 0.2
         
         if distance_from_center < 25:
             industrial_weight = 0.1
@@ -103,24 +103,24 @@ def map_regions(regions, vor):
     plt.figure(figsize = (30, 20))
     voronoi_plot_2d(vor, show_points = False, show_vertices = False)
     
-    for r in range(len(vor.point_region)):
+    for r in range(len(vor.point_region) - 4):
         region = vor.regions[vor.point_region[r]]
         
         if regions[r].type == 'Domestic':
-            color = '#00AD2E'
+            color = '#2CFC03'
             
         if regions[r].type == 'Commercial':
-            color = '#0069AB'
+            color = '#03F4FC'
             
         if regions[r].type == 'Industrial':
-            color = '#AB6700'
+            color = '#FCA503'
     
         if not -1 in region:
             polygon = [vor.vertices[i] for i in region]
             plt.fill(*zip(*polygon), color = color, alpha = 0.6)
             
-    plt.xlim((0, 100))
-    plt.ylim((0, 100))
+    plt.xlim((0, 50))
+    plt.ylim((0, 50))
     plt.show()
             
 def region_area(region_centers):
@@ -143,28 +143,28 @@ def region_area(region_centers):
 def fix_vertices(vor):
     for vertices in vor.vertices:
         if vertices[0] < -800:
-            vertices[0] = vertices[0]/10 + 80
+            vertices[0] = 0
         else:
-            if vertices[0] < -100:
-                vertices[0] = vertices[0]/10 + 10
+            if vertices[0] < -10:
+                vertices[0] = 0
                 
         if vertices[0] > 800:
-            vertices[0] = vertices[0]/10 + 20
+            vertices[0] = 50
         else:
-            if vertices[0] > 100:
-                vertices[0] = vertices[0]/10 + 90
+            if vertices[0] > 60:
+                vertices[0] = 50
             
         if vertices[1] < -800:
-            vertices[1] = vertices[1]/10 + 80
+            vertices[1] = 0
         else:
-            if vertices[1] < -100:
-                vertices[1] = vertices[1]/10 + 10
+            if vertices[1] < 0:
+                vertices[1] = 0
                 
         if vertices[1] > 800:
-            vertices[1] = vertices[1]/10 + 20
+            vertices[1] = 50
         else:            
-            if vertices[1] > 100:
-                vertices[1] = vertices[1]/10 + 90
+            if vertices[1] > 60:
+                vertices[1] = 50
 
 def get_available_jobs(commercial_list, industrial_list):
     
@@ -275,14 +275,14 @@ def get_average_occupancy(commercial_list):
     
     return average_occupancy
 
-def get_average_fanciness(domestic_list):
-    fancy = []
+def get_average_protection(domestic_list):
+    protection = []
     for region in domestic_list:
         for person in region.get_region_population():
             if person.type != 'Dead':
-                fancy.append(person.fanciness)
+                protection.append(person.protection)
 
-    return np.mean(fancy)
+    return np.mean(protection)
 
 def get_average_resistance(domestic_list):
     res = []
@@ -302,10 +302,11 @@ def get_average_age(domestic_list):
 
     return np.mean(age)
 
-def get_num_state_population(domestic_list, state):
+def get_num_state_population(population_list, state):
     num = 0    
-    for region in domestic_list:
-        num += region.get_num_state_members(state)
+    for person in population_list:
+        if person.type == state:
+            num += 1
             
     return num
 
@@ -346,3 +347,80 @@ def get_hospital_list(commercial_list):
             hospitals.append(hospital)
             
     return hospitals
+
+
+def update_color_and_occupancy(domestic_list, commercial_list, industrial_list):
+    color_occupancy = []
+
+    for domestic in domestic_list:
+        for house in domestic.buildings:
+            house.update_color()
+            color     = house.color
+            occupancy = 0
+            
+            for person in house.members:
+                if person.type != 'Dead' and person.type != 'Pacient' and person.quarantine == True:
+                    if person.workplace == 0 or person.workplace.remote == True:
+                        occupancy += 1
+                        
+            color_occupancy.append([color, occupancy/house.num_members])
+            
+    for commercial in commercial_list:
+        
+        if commercial.num_hospitals != 0:
+            for hospital in commercial.hospitals:
+                hospital.update_color()
+                color     = hospital.color
+                occupancy = hospital.get_occupancy()
+                
+                color_occupancy.append([color, occupancy])
+                
+        for company in commercial.companies:
+            company.update_color()
+            color     = company.color
+            occupancy = 0
+            
+            if company.remote == False:
+                for worker in company.workers:
+                    if worker.quarantine == False and worker.type != 'Dead' and worker.type != 'Pacient':
+                        occupancy += 1
+            color_occupancy.append([color, occupancy/company.num_workers])
+                   
+    for industrial in industrial_list:
+        
+        for industry in industrial.industries:
+            industry.update_color()
+            color     = industry.color
+            occupancy = 0
+            
+            if industry.remote == False:
+                for worker in industry.workers:
+                    if worker.quarantine == False and worker.type != 'Dead' and worker.type != 'Pacient':
+                        occupancy += 1
+                        
+            color_occupancy.append([color, occupancy/industry.num_workers])
+            
+    return color_occupancy
+    
+def get_buildings_xy(domestic_list, commercial_list, industrial_list):
+
+    buildings_xy = []
+    
+    for domestic in domestic_list:
+        buildings_xy += domestic.buildings_xy
+        
+    for commercial in commercial_list:
+        buildings_xy += commercial.buildings_xy
+    
+    for industrial in industrial_list:
+        buildings_xy += industrial.industries_xy
+    
+    buildings_location = np.zeros(shape = (len(buildings_xy), 2))
+    
+    for i in range(len(buildings_xy)):
+        buildings_location[i, 0] = buildings_xy[i][0]
+        buildings_location[i, 1] = buildings_xy[i][1]
+        
+    return buildings_location
+
+
