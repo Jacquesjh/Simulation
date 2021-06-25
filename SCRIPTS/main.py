@@ -4,18 +4,21 @@ Created on Thu Jun 17 19:02:02 2021
 
 @author: João Pedro Jacques Hoss
 """
-import sys
-sys.path.append('C:/Users/Joao/Simulation')
+
+
 from utils import *
 import time
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 
 
 
 if __name__ == '__main__':
     
     # Parameters
-    number_regions = 35
-    scale          = 100
+    number_regions = 25
+    scale          = 50
     std            = 15
     
     print(' ---------- Creating the environment ---------- ')
@@ -24,6 +27,8 @@ if __name__ == '__main__':
     map_regions(region_list, voronoi)
     print(' ---------- Environment created ---------- ')
     print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
+    
+    # %%
     
     print(' ---------- Generating population ----------')
     start = time.time()
@@ -36,20 +41,26 @@ if __name__ == '__main__':
     domestic_list     = get_domestic_regions(region_list)
     commercial_list   = get_commercial_regions(region_list)
     industrial_list   = get_industrial_regions(region_list)
-    
-    num_susceptible   = get_num_state_population(domestic_list, 'Susceptible')
-    num_infected      = get_num_state_population(domestic_list, 'Infected')
-    num_immune        = get_num_state_population(domestic_list, 'Immune')
-    num_pacients      = get_num_state_population(domestic_list, 'Pacient')
-    num_dead          = get_num_state_population(domestic_list, 'Dead')
-    total_population  = get_num_total_population(domestic_list)
     population_list   = get_population_list(domestic_list)
+    
+    pacient_zero                    = random.choice(population_list)
+    pacient_zero.type               = 'Infected'
+    pacient_zero.days_till_symptoms = 4
+    
+    susceptible   = get_num_state_population(population_list, 'Susceptible')
+    infected      = get_num_state_population(population_list, 'Infected')
+    immune        = get_num_state_population(population_list, 'Immune')
+    pacients      = get_num_state_population(population_list, 'Pacient')
+    dead          = get_num_state_population(population_list, 'Dead')
+    total_population  = get_num_total_population(domestic_list)
     
     num_houses        = get_num_houses(domestic_list)
     num_hospitals     = get_num_hospitals(commercial_list)
     num_industries    = get_num_industries(industrial_list)
     print(' ---------- Lists gathered ----------')
     print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
+    
+    # %%
     
     print(' ---------- Generating commercial buildings ----------')
     start             = time.time()
@@ -60,113 +71,172 @@ if __name__ == '__main__':
     num_hospital_beds = get_num_hospital_beds(commercial_list)
     print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
     
-    print(' ---------- Generating jobs ----------')
-    start = time.time()
-    create_jobs(population_list, commercial_list, industrial_list)
+    # %%
+    
+    print(' ---------- Generating jobs ----------')                                     ## If it gives error "Cannot choose from an empty sequence" just ty again
+    start = time.time()                                                                 ## I have no more sanity left to fix it, but eventually it works 
+    create_jobs(population_list, commercial_list, industrial_list)                      ## IT WILL WORK EVENTUALLY !
     print(' ---------- Jobs created ----------')
     print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
     
+    # %%
+    
     ## ---------------------- CONTROL VARIABLES ----------------------
-    daily_cases              = []
-    daily_deaths             = []
+    
+    color_occupancy = update_color_and_occupancy(domestic_list, commercial_list, industrial_list)
+    
+    new_cases                = []
+    new_deaths               = []
     daily_occupancy          = []
-    daily_susceptible        = []
-    daily_infected           = []
-    daily_immune             = []
-    daily_pacients           = []
-    daily_dead               = []
-    daily_average_fanciness  = []
+    num_susceptible          = []
+    num_infected             = []
+    num_immune               = []
+    num_pacients             = []
+    num_dead                 = []
+    daily_average_protection = []
     daily_average_resistance = []
     daily_averega_age        = []
-    
-    
     daily_risk               = []
-    
+    daily_colors             = []
     ## ---------------------- STARTING CONDITIONS ----------------------
     
-    daily_cases.append(0)
-    daily_deaths.append(0)
+    daily_risk.append(0)
+    new_cases.append(0)
+    new_deaths.append(0)
     daily_occupancy.append(get_average_occupancy(commercial_list))
-    daily_susceptible.append(num_susceptible)
-    daily_infected.append(num_infected)
-    daily_immune.append(num_immune)
-    daily_pacients.append(num_pacients)
-    daily_dead.append(num_dead)
-    daily_average_fanciness.append(get_average_fanciness(domestic_list))
+    num_susceptible.append(susceptible)
+    num_infected.append(infected)
+    num_immune.append(immune)
+    num_pacients.append(pacients)
+    num_dead.append(dead)
+    daily_average_protection.append(get_average_protection(domestic_list))
     daily_average_resistance.append(get_average_resistance(domestic_list))
     daily_averega_age.append(get_average_age(domestic_list))
-    
-    
-    daily_risk.append(0)
-    
+    daily_colors.append(color_occupancy)
     HOSPITAL_LIST = get_hospital_list(commercial_list)
     
-    DAYS  = 365
+    DAYS  = 90
     steps = 7
+        
+    buildings_location = get_buildings_xy(domestic_list, commercial_list, industrial_list)
     
-    '''
-        The steps are the stages of the day of a person
-            0 - staying in house
-            1 - going to work
-            2 - at work
-            3 - lunching
-            4 - at work
-            5 - coming back from work
-            6 - staying in house
-            *Repeat
-    '''
-    '''
-        To create the Pacient - ZERO
-    '''
+    # %%
     
-    pacient_zero                    = random.choice(population_list)
-    pacient_zero.type               = 'Infected'
-    pacient_zero.days_till_symptoms = 4
-    
-    
+    ## ------------------------- SIMULATION --------------------------------
     
     for day in range(DAYS):
 
-        print('Starting the day!')        
+        print('\nDay: ' + str(day + 1) + '\n')        
         update_population(population_list, daily_risk[-1], HOSPITAL_LIST)
         update_transportation(domestic_list)
         update_restaurants(commercial_list)
+        
+        color_occupancy = update_color_and_occupancy(domestic_list, commercial_list, industrial_list)
         
         for stage in range(steps):
             
             start = time.time()
             daily_routine(population_list, stage)
             print('Stage ' + str(stage) + ' Done!!')
-            print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
+            print(' ---------- Execution time: {:.2f}s ----------'.format(time.time() - start))
             
         ## ---------------------- End of day conditions ----------------------
         
-        new_susceptible    = get_num_state_population(domestic_list, 'Susceptible')
-        new_infected       = get_num_state_population(domestic_list, 'Infected')
-        new_immune         = get_num_state_population(domestic_list, 'Immune')
-        new_pacient        = get_num_state_population(domestic_list, 'Pacient')
-        new_dead           = get_num_state_population(domestic_list, 'Dead')
+        susceptible    = get_num_state_population(population_list, 'Susceptible')
+        infected       = get_num_state_population(population_list, 'Infected')
+        immune         = get_num_state_population(population_list, 'Immune')
+        pacient        = get_num_state_population(population_list, 'Pacient')
+        dead           = get_num_state_population(population_list, 'Dead')
         
         hospital_occupancy = get_average_occupancy(commercial_list)
         total_population   = get_num_total_population(domestic_list)
         
-        new_cases          = new_infected - daily_infected[-1]
-        new_deaths         = new_dead - daily_dead[-1]
+        today_cases          = abs(infected - num_infected[-1])
+        today_deaths         = abs(dead - num_dead[-1])
         
-        risk               = (pow(new_cases, 5/4) + pow(new_deaths, 13/8))*((hospital_occupancy/total_population))
+        risk               = (pow(today_cases, 5/4) + pow(today_deaths, 13/8))*((hospital_occupancy/total_population))
         
-        daily_cases.append(new_cases)
-        daily_deaths.append(new_deaths)
+        new_cases.append(today_cases)
+        new_deaths.append(today_deaths)
         daily_occupancy.append(get_average_occupancy(commercial_list))
-        daily_susceptible.append(new_susceptible)
-        daily_infected.append(new_infected)
-        daily_immune.append(new_immune)
-        daily_pacients.append(new_pacient)
-        daily_dead.append(new_dead)
-        daily_average_fanciness.append(get_average_fanciness(domestic_list))
+        num_susceptible.append(susceptible)
+        num_infected.append(infected)
+        num_immune.append(immune)
+        num_pacients.append(pacient)
+        num_dead.append(dead)
+        daily_average_protection.append(get_average_protection(domestic_list))
         daily_average_resistance.append(get_average_resistance(domestic_list))
         daily_averega_age.append(get_average_age(domestic_list))
             
-        daily_risk.append(risk)
-        
+        daily_risk.append(risk)        
+        daily_colors.append(color_occupancy)
         break
+    
+    # %%
+    import mplcyberpunk
+    
+    plt.style.use('dark_background')
+    fig = plt.figure(figsize = (20, 20))
+    ax  = fig.add_subplot(111, projection = '3d')
+    fig.set_facecolor('black')
+    ax.set_facecolor('black')
+    ax.xaxis.set_ticklabels([])
+    ax.yaxis.set_ticklabels([])
+    ax.get_zaxis().set_ticks([])
+    ax.get_zaxis().line.set_linewidth(0)
+    ax.grid(False) 
+    ax.w_xaxis.pane.fill = False
+    ax.w_yaxis.pane.fill = False
+    ax.w_zaxis.pane.fill = False
+    
+    x      = buildings_location[:, 0]
+    y      = buildings_location[:, 1]
+    bottom = np.zeros(shape = x.shape)
+    width  = 5
+    top    = []
+    colors = []
+    
+    for i in range(len(color_occupancy)):
+        colors.append(color_occupancy[i][0])
+        occupancy = color_occupancy[i][1]
+        
+        if color_occupancy[i][0] == '#03F4FC' or color_occupancy[i][0] == '#FC0304' or color_occupancy[i][0] == '#003638':
+            top.append(0.6 + occupancy/5)
+            
+        if color_occupancy[i][0] == '#2CFC03' or color_occupancy[i][0] == '#FC0303' or color_occupancy[i][0] == '#000000':
+            top.append(0.5 + occupancy/5)
+            
+        if color_occupancy[i][0] == '#FCA503' or color_occupancy[i][0] == '#FC0302' or color_occupancy[i][0] == '#382100':
+            top.append(0.6 + occupancy/5)
+            
+        if color_occupancy[i][0] == '#1F02FA' or color_occupancy[i][0] == '#4A0057' or color_occupancy[i][0] == '#200066':
+            top.append(0.8 + occupancy/5)
+            
+    ax.view_init(azim = 20, elev = 20)
+    ax.axis('off')
+    value = 400
+    while value != -450:
+        ax.plot([-400, 400], [value, value], 0, color = '#5C2C6D', zorder = 2)
+        ax.plot([value, value], [-400, 400], 0, color = '#5C2C6D', zorder = 2)
+        value -= 50
+        
+    ax.set_zlim((0, 7))
+    ax.bar3d(x, y, bottom, width, width, top, shade = True, color = colors)
+    
+    # %%
+    lit = []
+    
+    for i in range(len(color_occupancy)):
+        color = color_occupancy[i][0]
+        if color not in lit:
+            
+            lit.append(color)
+            
+            
+            
+plt.figure(figsize = (20, 20))
+x = np.arange(0, 20, 0.1)
+y = np.sin(x)
+
+plt.plot(x, y, color = 'purple')
+mplcyberpunk.add_glow_effects()
