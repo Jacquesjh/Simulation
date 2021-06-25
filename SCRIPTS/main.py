@@ -11,6 +11,8 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
+import pandas as pd
+import pickle
 
 
 
@@ -75,7 +77,7 @@ if __name__ == '__main__':
     
     print(' ---------- Generating jobs ----------')                                     ## If it gives error "Cannot choose from an empty sequence" just ty again
     start = time.time()                                                                 ## I have no more sanity left to fix it, but eventually it works 
-    create_jobs(population_list, commercial_list, industrial_list)                      ## IT WILL WORK EVENTUALLY !
+    create_jobs(population_list, commercial_list, industrial_list)                      ## IT WILL WORK EVENTUALLY ! Sometimes it gives error 6 times before working
     print(' ---------- Jobs created ----------')
     print(' ---------- Execution time: {:.2f}s ----------\n\n'.format(time.time() - start))
     
@@ -95,6 +97,7 @@ if __name__ == '__main__':
     num_dead                 = []
     daily_average_protection = []
     daily_average_resistance = []
+    daily_average_awareness  = []
     daily_averega_age        = []
     daily_risk               = []
     daily_colors             = []
@@ -111,6 +114,7 @@ if __name__ == '__main__':
     num_dead.append(dead)
     daily_average_protection.append(get_average_protection(domestic_list))
     daily_average_resistance.append(get_average_resistance(domestic_list))
+    daily_average_awareness.append(get_average_awareness(domestic_list))
     daily_averega_age.append(get_average_age(domestic_list))
     daily_colors.append(color_occupancy)
     HOSPITAL_LIST = get_hospital_list(commercial_list)
@@ -124,9 +128,9 @@ if __name__ == '__main__':
     
     ## ------------------------- SIMULATION --------------------------------
     
-    for day in range(DAYS):
+    for day in range(600):
 
-        print('\nDay: ' + str(day + 1) + '\n')        
+        print('\nDay: ' + str(day + 1) + '\n')
         update_population(population_list, daily_risk[-1], HOSPITAL_LIST)
         update_transportation(domestic_list)
         update_restaurants(commercial_list)
@@ -142,19 +146,19 @@ if __name__ == '__main__':
             
         ## ---------------------- End of day conditions ----------------------
         
-        susceptible    = get_num_state_population(population_list, 'Susceptible')
-        infected       = get_num_state_population(population_list, 'Infected')
-        immune         = get_num_state_population(population_list, 'Immune')
-        pacient        = get_num_state_population(population_list, 'Pacient')
-        dead           = get_num_state_population(population_list, 'Dead')
+        susceptible        = get_num_state_population(population_list, 'Susceptible')
+        infected           = get_num_state_population(population_list, 'Infected')
+        immune             = get_num_state_population(population_list, 'Immune')
+        pacient            = get_num_state_population(population_list, 'Pacient')
+        dead               = get_num_state_population(population_list, 'Dead')
         
         hospital_occupancy = get_average_occupancy(commercial_list)
         total_population   = get_num_total_population(domestic_list)
         
-        today_cases          = abs(infected - num_infected[-1])
-        today_deaths         = abs(dead - num_dead[-1])
+        today_cases        = abs(infected - num_infected[-1])
+        today_deaths       = abs(dead - num_dead[-1])
         
-        risk               = (pow(today_cases, 5/4) + pow(today_deaths, 13/8))*((hospital_occupancy/total_population))
+        risk               = (pow(today_cases, 13/8) + pow(today_deaths, 13/8))*((hospital_occupancy/total_population))
         
         new_cases.append(today_cases)
         new_deaths.append(today_deaths)
@@ -166,14 +170,13 @@ if __name__ == '__main__':
         num_dead.append(dead)
         daily_average_protection.append(get_average_protection(domestic_list))
         daily_average_resistance.append(get_average_resistance(domestic_list))
+        daily_average_awareness.append(get_average_awareness(domestic_list))
         daily_averega_age.append(get_average_age(domestic_list))
             
         daily_risk.append(risk)        
         daily_colors.append(color_occupancy)
-        break
     
     # %%
-    import mplcyberpunk
     
     plt.style.use('dark_background')
     fig = plt.figure(figsize = (20, 20))
@@ -223,20 +226,40 @@ if __name__ == '__main__':
     ax.set_zlim((0, 7))
     ax.bar3d(x, y, bottom, width, width, top, shade = True, color = colors)
     
-    # %%
-    lit = []
-    
-    for i in range(len(color_occupancy)):
-        color = color_occupancy[i][0]
-        if color not in lit:
-            
-            lit.append(color)
-            
-            
-            
-plt.figure(figsize = (20, 20))
-x = np.arange(0, 20, 0.1)
-y = np.sin(x)
+# %%
 
-plt.plot(x, y, color = 'purple')
+dataframe = pd.DataFrame(columns = ['Susceptible', 'Infected', 'Immune', 'Pacient', 'Dead',
+                                    'Occupancy', 'Average Protection', 'Average Awareness',
+                                    'Average Resistance', 'Risk'])
+dataframe['Susceptible']        = num_susceptible    
+dataframe['Infected']           = num_infected
+dataframe['Immune']             = num_immune
+dataframe['Pacient']            = num_pacients
+dataframe['Dead']               = num_dead
+dataframe['Occupancy']          = daily_occupancy
+dataframe['Average Protection'] = daily_average_protection
+dataframe['Average Resistance'] = daily_average_resistance
+dataframe['Average Awareness']  = daily_average_awareness
+dataframe['Risk']               = daily_risk
+           
+dataframe.to_csv('C:/Users/Joao/Simulation/EXPERIMENTS/Population_1/data_round_1.csv')
+np.save('C:/Users/Joao/Simulation/EXPERIMENTS/Population_1/buildings_location.npy', buildings_location)
+
+with open('C:/Users/Joao/Simulation/EXPERIMENTS/Population_1/colors_occupanies_round_1', 'wb') as file:
+    pickle.dump(daily_colors, file)
+
+# %%
+import mplcyberpunk 
+plt.figure(figsize = (20, 20))
+
+plt.plot(num_susceptible, color = 'purple')
+plt.plot(num_infected, color = 'blue')
 mplcyberpunk.add_glow_effects()
+
+
+
+
+
+res = []
+for person in population_list:
+    res.append(person.resistance)
