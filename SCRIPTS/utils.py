@@ -32,15 +32,17 @@ def create_jobs(population_list, commercial_list, industrial_list):
     
     for commercial in commercial_list:
         for company in commercial.companies:
-            workers = population_list[index: index + company.num_workers]
-            company.generate_jobs(workers)
-            index += company.num_workers
+            if index + company.num_workers < len(population_list):
+                workers = population_list[index: index + company.num_workers]
+                company.generate_jobs(workers)
+                index += company.num_workers
             
     for industrial in industrial_list:
         for industry in industrial.industries:
-            workers = population_list[index: index + industry.num_workers]
-            industry.generate_jobs(workers)
-            index += industry.num_workers
+            if index + company.num_workers < len(population_list):
+                workers = population_list[index: index + industry.num_workers]
+                industry.generate_jobs(workers)
+                index += industry.num_workers
 
 
 def create_population(region_list):
@@ -169,6 +171,7 @@ def fix_vertices(vor):
 def get_available_jobs(commercial_list, industrial_list):
     
     jobs = 0
+    
     for commercial in commercial_list:
         for company in commercial.companies:
             jobs += company.num_workers
@@ -292,6 +295,15 @@ def get_average_resistance(domestic_list):
                 res.append(person.resistance)
 
     return np.mean(res)
+
+def get_average_awareness(domestic_list):
+    awareness = []
+    for region in domestic_list:
+        for person in region.get_region_population():
+            if person.type != 'Dead':
+                awareness.append(person.awareness)
+
+    return np.mean(awareness)
 
 def get_average_age(domestic_list):
     age = []
