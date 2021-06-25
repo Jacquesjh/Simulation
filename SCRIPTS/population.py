@@ -74,20 +74,20 @@ class Person:
                 self.resistance = 0
                 
             self.resistance = self.resistance*(1 + pow(self.resistance, 3/2))          ## Updates through time
-            
+            '''
             if new_risk > 0.5:                                                         ## Chance of the Susceptible quarantine out of will 
                 self.quarantine = random.choices([False, True],
                                                  weights = (self.resistance, 1 - self.resistance))[0]
-            
+            '''
             if self.resistance > 1:                
                 self.resistance = 1
                 
             if self.type != 'Immune':                                                  ## An Immune agent has self.protection = 1 always              
                 self.protection = 1 - pow(self.resistance, 3/2)
                 
-            if self.type == 'Infected':
-                self.contagius  = normal(pow(self.protection, 1/self.symptoms_type),
-                                         0.23*pow(self.protection, 1/self.symptoms_type))
+            if self.type == 'Infected' and self.days_till_symptoms == 0 and self.symptoms_type != 0:
+                self.contagius  = normal(pow(1 - self.protection, 1/self.symptoms_type),
+                                         0.23*pow(1 - self.protection, 1/self.symptoms_type))
                 self.quarantine = random.choices([False, True],
                                                  weights = (self.resistance, 1 - self.resistance))[0]
                 
@@ -99,16 +99,17 @@ class Person:
                 if self.days_till_symptoms > 0:
                     self.days_till_symptoms -= 1
                 else:
-                    if self.days_left_infected == 0:
+                    if self.symptoms_type == 0:
                         
                         if self.disease_intensity == 1:                                ## So that it doesn't divides by 0 when /(1 - self.dis)
-                            self.disease_intensity = 0.95
+                            self.disease_intensity = 0.99
                             
-                        type_3 = normal(0.05*self.age/(pow((1 - self.disease_intensity), 1/2)*35),
-                                        0.05/pow(1 - self.disease_intensity, 1/2))
-                        if type_3 < 1:
-                            type_2 = normal(0.3*self.age/(pow((1 - self.disease_intensity),
-                                                              1/2)*35), 0.23*0.3/pow(1 - self.disease_intensity, 1/2))
+                        type_3 = normal(0.1*self.age/(pow((1 - self.disease_intensity), 1/2)*35),
+                                        0.1/pow(1 - self.disease_intensity, 1/2))
+                        if type_3 > 1:
+                            type_3 = 1
+                        type_2 = normal(0.3*self.age/(pow((1 - self.disease_intensity), 1/2)*35),
+                                        0.23*0.3/pow(1 - self.disease_intensity, 1/2))
                         if (type_2 + type_3) > 1:
                             type_2 = 1 - type_3
                             
@@ -138,14 +139,14 @@ class Person:
                         else:
                             self.days_left_infected = int(np.random.normal(loc   = 14,
                                                                            scale = 3.5))
-                            self.contagius          = normal(pow(self.protection, 1/self.symptoms_type),
-                                                             0.23*pow(self.protection, 1/self.symptoms_type))
+                            self.contagius          = normal(pow(1 - self.protection, 1/self.symptoms_type),
+                                                             0.23*pow(1 - self.protection, 1/self.symptoms_type))
                             
             ## ----------------------------------------------------------------
             ##
             ## Checks if and Infected's infection time is over
             
-            if  self.type == 'Infected':
+            if  self.type == 'Infected' and self.days_till_symptoms == 0 and self.symptoms_type != 0:
                 if self.days_left_infected > 0:
                     self.days_left_infected -= 1
                         
@@ -155,10 +156,10 @@ class Person:
                                                                    scale = 32))
                     self.contagius          = 0
                     self.death_probability  = 0
-                    self.awareness          = pow(self.awareness, self.symptoms_type/(3 - self.symptoms_type))
-                    self.resistance         = pow(self.resistance, self.symptoms_type/(3 - self.symptoms_type))
+                    self.awareness          = pow(self.awareness, pow(2, 2 - self.symptoms_type))
+                    self.resistance         = pow(self.resistance, pow(2, 2 - self.symptoms_type))
                     
-            ## ----------------------------------------------------------------
+            ## ---------------------------------------------------------------
             ##
             ## Checks the situation if the agent is in hospital
             
@@ -174,12 +175,12 @@ class Person:
                     self.death_probability  = 0
                     self.health             = 'Unhealty'
                     self.disease_intensity  = normal(0.5, 0.2)                            ## Represents the sequelaa of the pacient
-                    self.awareness          = pow(self.awareness, self.symptoms_type/(3 - self.symptoms_type))
-                    self.resistance         = pow(self.resistance, self.symptoms_type/(3 - self.symptoms_type))
+                    self.awareness          = pow(self.awareness, pow(2, 2 - self.symptoms_type))
+                    self.resistance         = pow(self.resistance, pow(2, 2 - self.symptoms_type))
                     self.hospital.pacients.remove(self)
                     self.hospital           = 0
                     
-            ## ----------------------------------------------------------------
+            ## ---------------------------------------------------------------
             ##
             ## Checks if the immunity of the Immune agent has passed    
             
@@ -273,7 +274,7 @@ class Person:
             
         if step == 3:                                                           ## Lunch time
             if self.type == 'Susceptible' or self.type == 'Immune':
-                if self.quarantine == False:
+                if self.quarantine == False and self.workplace != 0:
                     if self.workplace.region == 'Commercial':
                         self.routine_lunching()
                     else:
@@ -282,7 +283,7 @@ class Person:
                     self.routine_at_home()
             
             if self.type == 'Infected':
-                if self.quarantine == False:                    
+                if self.quarantine == False and self.workplace != 0:                 
                     self.routine_lunching()
                 
                 else:
@@ -378,7 +379,7 @@ class Person:
         
         infected_members = self.house.get_state_members('Infected')
         
-        if self.type != 'Immune' :
+        if self.type != 'Immune' and self.type != 'Infected':
             if len(infected_members) != 0:
                 contagius_total = 0
                 
@@ -428,7 +429,7 @@ class Person:
         
         ## ------------------------ Infection Gamble --------------------------
         
-        if self.transportation == 'Public' and self.type != 'Immune':
+        if self.transportation == 'Public' and self.type != 'Immune' and self.type != 'Infected':
             
             domestic_region         = self.house.domestic_region
             num_possible_passengers = domestic_region.num_passengers
@@ -456,7 +457,7 @@ class Person:
         infected_coworkers = []
         contagius_total    = 0
         
-        if self.type != 'Immune':
+        if self.type != 'Immune' and self.type != 'Infected':
             for coworker in coworkers:
                 if coworker.type == 'Infected':
                     infected_coworkers.append(coworker)
@@ -508,7 +509,7 @@ class Person:
         ## ------------------------ Influence Gamble -------------------------
         
         if self.workplace.region == 'Commercial':
-            if self.lunch_routine == 'Restaurant' and self.type != 'Immune':
+            if self.lunch_routine == 'Restaurant' and self.type != 'Immune' and self.type != 'Infected':
                 
                 region                      = self.workplace.region
                 num_clients_region          = 0
@@ -521,7 +522,7 @@ class Person:
                     if worker.quarantine != True and worker.workplace.remote != True and worker.lunch_routine == 'Restaurant':
                         num_clients_region += 1
                         
-                        if worker.type == 'Infected':
+                        if worker.type == 'Infected' and worker.contagius != 0:
                             num_infected_clients_region += 1
                 
                 contagius_factor      = (num_infected_clients_region/num_clients_region)/num_restaurants
