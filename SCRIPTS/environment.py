@@ -15,8 +15,8 @@ class Company:
     def __init__(self, color, region):
         self.type         = 'Company'
         self.color        = color
-        self.num_workers  = int(np.random.normal(loc   = 50,
-                                                 scale = 20))
+        self.num_workers  = int(np.random.normal(loc   = 40,
+                                                 scale = 10))
         if self.num_workers < 10:
             self.num_workers = 10
     
@@ -43,12 +43,13 @@ class Company:
             for worker in population_list:
                 self.workers.append(worker)
                 worker.update_workplace(self)
-                    
-            self.generate_interactions()
+                
+            if len(self.workers) != 1:
+                self.generate_interactions()
     
     def generate_interactions(self):
         
-        if len(self.workers) != 0:
+        if len(self.workers) != 1:
             
             for worker in self.workers:
                 num_coworkers = int(np.random.normal(loc   = 6,
@@ -202,14 +203,14 @@ class CommercialRegion:
             if client.lunch_routine == 'Restaurant' and client.workplace.remote == False and client.quarantine == False:
                 self.rest_clients += 1
                 
-                if client.type == 'Infected' and client.contagius != 0:
+                if client.type == 'Infected' and client.days_till_symptoms < 3:
                     self.infected_clients += 1
         
         
     def generate_buildings(self, num_commercial_regions, total_population):
             
         self.num_companies = int(np.random.normal(loc   = 50*(self.area/self.scale),
-                                                  scale = 0.23*100*(self.area/self.scale)))
+                                                  scale = 0.23*40*(self.area/self.scale)))
         if self.num_companies < 20:
             self.num_companies = 20
             
@@ -252,7 +253,7 @@ class House:
         self.type            = 'House'
         self.color           = color
         self.wealth          = wealth_base
-        self.num_members     = int(np.random.normal(loc   = (4 + 1/pow(wealth_base, 1/2)),
+        self.num_members     = int(np.random.normal(loc   = (5 + 1/pow(wealth_base, 1/2)),
                                                     scale = 1/pow(wealth_base, 1/2)))
         if self.num_members < 1:
             self.num_members = 1
@@ -307,7 +308,7 @@ class DomesticRegion:
         self.x                   = x
         self.y                   = y
         self.wealth              = 0.8/(1 + distance*pow(np.e, - scale/area)) + 0.2
-        self.num_buildings       = int(abs(np.random.normal(loc   = distance*(pow(self.area/np.pi, 1/2)/self.wealth),
+        self.num_buildings       = int(abs(np.random.normal(loc   = 1.5*distance*(pow(self.area/np.pi, 1/2)/self.wealth),
                                                             scale = distance*pow(scale, 1/2)/self.wealth)))
         self.buildings           = []
         self.buildings_xy        = []
@@ -334,7 +335,7 @@ class DomesticRegion:
             if passenger.transportation == 'Public' and passenger.workplace != 0 and passenger.quarantine == False and passenger.workplace.remote == False:
                 self.num_passengers += 1
                 
-                if passenger.type == 'Infected' and passenger.contagius != 0:
+                if passenger.type == 'Infected' and passenger.days_till_symptoms < 3:
                     self.infected_passengers += 1
         
     def get_buildings(self):
@@ -485,10 +486,10 @@ class IndustrialRegion:
             self.area       = pow(np.pi*pow(scale, 1/2), 2)/2
         else:
             self.area       = area
-        self.num_industries = int(np.random.normal(loc   = 10,
-                                                   scale = 0.23*10))
-        if self.num_industries < 5:
-            self.num_industries = 5
+        self.num_industries = int(np.random.normal(loc   = 6,
+                                                   scale = 2))
+        if self.num_industries < 3:
+            self.num_industries = 3
             
         self.industries     = []
         self.industries_xy  = []
