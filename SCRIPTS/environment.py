@@ -9,9 +9,10 @@ import numpy as np
 import random
 from population import Person, normal
 
+
 class Company:
     
-    def __init__(self, color):
+    def __init__(self, color, region):
         self.type         = 'Company'
         self.color        = color
         self.num_workers  = int(np.random.normal(loc   = 200,
@@ -23,10 +24,11 @@ class Company:
         self.home_office  = normal(mean = 0.6, std = 0.23)
         self.interactions = []
         self.remote       = False
+        self.region       = region
     
     def work_from_home(self, risk):
         self.remote = random.choices([False, True],
-                                     weights = (1 - (self.home_office + risk)/2, (self.home_office + risk)/2)[0]
+                                     weights = (1 - (self.home_office + risk)/2, (self.home_office + risk)/2))[0]
         
     def generate_jobs(self, population_list):
         if len(population_list) != 0:
@@ -95,14 +97,15 @@ class Restaurant:
         self.clients      = []
         self.interactions = []
     
-        
+    
 class Hospital:
     
-    def __init__(self, color):
+    def __init__(self, color, region):
         self.type     = 'Hospital'
         self.color    = color
         self.num_beds = 0 
         self.pacients = []
+        self.region   = region
         
     def generate_beds(self, num_commercial_regions, total_population):
         self.num_beds = int(np.random.normal(loc   = 3*total_population/(10000*num_commercial_regions),
@@ -120,39 +123,56 @@ class Hospital:
     def get_occupancy(self):
         return len(self.pacients)/self.num_beds
         
+    
 class CommercialRegion:
     
     def __init__(self, distance, area, x, y, scale):
-        self.type            = 'Commercial'
-        self.color           = '#0069AB'
-        self.distance        = distance        
+        self.type             = 'Commercial'
+        self.color            = '#0069AB'
+        self.distance         = distance        
         
         if area > pow(np.pi*pow(scale, 1/2), 2):
-            self.area        = pow(np.pi*pow(scale, 1/2), 2)/2            
+            self.area         = pow(np.pi*pow(scale, 1/2), 2)/2            
         else:
-            self.area        = area
+            self.area         = area
             
-        self.x               = x
-        self.y               = y
-        self.scale           = scale
-        self.num_companies   = 0
-        self.num_restaurants = 0
-        self.num_hospitals   = random.choice((0, 1, 2))
-        self.hospitals       = []
+        self.x                =  x
+        self.y                = y
+        self.scale            = scale
+        self.num_companies    = 0
+        self.num_restaurants  = 0
+        self.num_hospitals    = random.choice((0, 1, 2))
+        self.hospitals        = []
+        self.rest_clients     = 0
+        self.infected_clients = 0
         
         if self.num_hospitals != 0:
             for i in range(self.num_hospitals):
-                self.hospitals.append(Hospital(self.color))
+                self.hospitals.append(Hospital(self.color, region = self))
                 
         self.companies       = []
         self.restaurants     = []
+        
+        
+    def update_restaurants(self):
+        possible_clients = (self.get_state_population('Susceptible')
+                            + self.get_state_population('Infected')
+                            + self.get_state_population('Immune'))
+        
+        for client in possible_clients:
+            if client.lunch_routine == 'Restaurant' and client.workplace.remote == False and client.quarantine == False:
+                self.rest_clients += 1
+                
+                if client.type == 'Infected':
+                    self.infected_clients += 1
+        
         
     def generate_buildings(self, num_commercial_regions, total_population):
             
         self.num_companies = int(np.random.normal(loc   = 200*(self.area/self.scale),
                                                   scale = 0.23*200*(self.area/self.scale)))
         for i in range(self.num_companies):
-            self.companies.append(Company(self.color))
+            self.companies.append(Company(self.color, region = self))
             
         self.num_restaurants = int(np.random.normal(loc = 0.1*self.num_companies,
                                                     scale = 0.23*0.01*self.num_companies))
@@ -162,14 +182,6 @@ class CommercialRegion:
         for hospital in self.hospitals:
             hospital.generate_beds(num_commercial_regions, total_population)
             
-    def get_num_rest_population(self):
-        num = 0
-        for company in self.companies:
-            for worker in company.workers:
-                if worker.lunch_routine == 'Restaurant':
-                    num += 1
-        return num
-    
     def get_num_state_population(self, state):
         num = 0
         for company in self.companies:
@@ -185,16 +197,19 @@ class CommercialRegion:
                 
         return list_pop
     
+    
 class House:
     
-    def __init__(self, color, wealth_base):
+    def __init__(self, color, wealth_base, domestic_region):
         self.type            = 'House'
         self.color           = color
         self.wealth          = wealth_base
-        self.num_members     = int(np.random.normal(loc = (4 + 1/wealth_base), scale = 1/wealth_base))
+        self.num_members     = int(np.random.normal(loc   = (4 + 1/pow(wealth_base, 1/2)),
+                                                    scale = 1/pow(wealth_base, 1/2)))
         if self.num_members < 1:
             self.num_members = 1            
         self.members         = []
+        self.domestic_region = domestic_region
         
     def generate_house_members(self):
         self.members = []
@@ -220,25 +235,44 @@ class House:
                 
         return list_members
 
+
 class DomesticRegion:
     
     def __init__(self, distance, area, x, y, scale):
-        self.type             = 'Domestic'
-        self.color            = '#00AD2E'
-        self.distance         = distance
-        if area > pow(np.pi*pow(scale, 1/2), 2):
-            self.area         = pow(np.pi*pow(scale, 1/2), 2)/2            
-        else:
-            self.area         = area            
-        self.x                = x
-        self.y                = y
-        self.wealth           = 0.8/(1 + distance*pow(np.e, - scale/area)) + 0.2
-        self.num_buildings    = int(abs(np.random.normal(loc   = distance*(pow(self.area/np.pi, 1/2)/self.wealth),
-                                                         scale = distance*pow(scale, 1/2)/self.wealth)))
-        self.buildings        = []
-        for i in range(self.num_buildings):
-            self.buildings.append(House(color = self.color, wealth_base = self.wealth))
+        self.type                = 'Domestic'
+        self.color               = '#00AD2E'
+        self.distance            = distance
         
+        if area > pow(np.pi*pow(scale, 1/2), 2):
+            self.area            = pow(np.pi*pow(scale, 1/2), 2)/2  
+            
+        else:
+            self.area            = area
+            
+        self.x                   = x
+        self.y                   = y
+        self.wealth              = 0.8/(1 + distance*pow(np.e, - scale/area)) + 0.2
+        self.num_buildings       = int(abs(np.random.normal(loc   = 0.25*distance*(pow(self.area/np.pi, 1/2)/self.wealth),
+                                                            scale = distance*pow(scale, 1/2)/self.wealth)))
+        self.buildings           = []
+        
+        for i in range(self.num_buildings):
+            self.buildings.append(House(color = self.color, wealth_base = self.wealth, domestic_region = self))
+        
+        self.num_passengers      = 0
+        self.infected_passengers = 0
+        
+    def update_transportation(self):
+        possible_passengers = (self.get_state_members('Susceptible')
+                              + self.get_state_members('Infected')
+                              + self.get_state_members('Immune'))
+        
+        for passenger in possible_passengers:
+            if passenger.transportation == 'Public' and passenger.workplace != 0 and passenger.quarantine == False and passenger.workplace.remote == False:
+                self.num_passengers += 1
+                
+                if passenger.type == 'Infected':
+                    self.infected_passengers += 1
         
     def get_buildings(self):
         return self.buildings
@@ -283,7 +317,7 @@ class DomesticRegion:
         num_state = 0
         
         for building in self.buildings:
-            num_state += building.num_state_members(state)
+            num_state += building.get_num_state_members(state)
             
         return num_state
     
@@ -291,9 +325,10 @@ class DomesticRegion:
         for building in self.buildings:
             building.generate_house_members()
             
+            
 class Industry:
     
-    def __init__(self, color):
+    def __init__(self, color, region):
         
         self.type         = 'Industry'
         self.color        = color
@@ -303,6 +338,7 @@ class Industry:
         self.home_office  = normal(mean = 0.15, std = 0.1)
         self.interactions = []
         self.remote       = False
+        self.region       = region
         
     def work_from_home(self):
         self.remote = random.choices([False, True],
@@ -355,6 +391,15 @@ class Industry:
                 
         return list_workers
     
+    def get_coworkers(self, worker):
+        coworkers = []
+        for interaction in self.interactions:
+            if interaction['Worker'] == worker:
+                coworkers = interaction['Coworkers']
+                break
+            
+        return coworkers
+
 class IndustrialRegion:
     
     def __init__(self, distance, area, x, y, scale):        
@@ -372,7 +417,7 @@ class IndustrialRegion:
                                                    scale = 0.23*40))
         self.industries     = []
         for i in range(self.num_industries):
-            self.industries.append(Industry(self.color))
+            self.industries.append(Industry(self.color, region = self))
             
     def get_state_population(self, state):
         lis = []
@@ -388,4 +433,3 @@ class IndustrialRegion:
             num += industry.get_num_state_workers(state)
             
         return num
-    
