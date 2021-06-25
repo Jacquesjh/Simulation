@@ -23,6 +23,8 @@ class Person:
         self.type               = 'Susceptible'
         self.awareness          = normal(0.5, 0.3)
         self.resistance         = normal(0.5, 0.23)
+        if self.resistance < 0:
+            self.resistance = 0
         self.fanciness          = normal(wealth_base, 0.23)
         self.influence          = normal(0.5, 0.23)
         self.age                = int(np.random.normal(loc = 35, scale = 15))
@@ -68,12 +70,12 @@ class Person:
             
             ## Updates the resistance and protection depending on the daily risk
             
-            self.resistance = self.resistance - self.awareness*pow(new_risk, 3/2)      ## Updates depending on the risk of the situation
+            self.resistance = self.resistance - self.awareness*pow(new_risk, 7/8)      ## Updates depending on the risk of the situation
             
             if self.resistance < 0:
                 self.resistance = 0
                 
-            self.resistance = self.resistance*(1 + pow(self.resistance, 3/2))          ## Updates through time
+            self.resistance = self.resistance*(1 + pow(abs(self.resistance - 0.5), 3/2))          ## Updates through time
             '''
             if new_risk > 0.5:                                                         ## Chance of the Susceptible quarantine out of will 
                 self.quarantine = random.choices([False, True],
@@ -104,11 +106,11 @@ class Person:
                         if self.disease_intensity == 1:                                ## So that it doesn't divides by 0 when /(1 - self.dis)
                             self.disease_intensity = 0.99
                             
-                        type_3 = normal(0.1*self.age/(pow((1 - self.disease_intensity), 1/2)*35),
+                        type_3 = normal(0.35*self.age/(pow((1 - self.disease_intensity), 1/2)*35),
                                         0.1/pow(1 - self.disease_intensity, 1/2))
                         if type_3 > 1:
                             type_3 = 1
-                        type_2 = normal(0.3*self.age/(pow((1 - self.disease_intensity), 1/2)*35),
+                        type_2 = normal(0.5*self.age/(pow((1 - self.disease_intensity), 1/2)*35),
                                         0.23*0.3/pow(1 - self.disease_intensity, 1/2))
                         if (type_2 + type_3) > 1:
                             type_2 = 1 - type_3
@@ -379,6 +381,12 @@ class Person:
         
         infected_members = self.house.get_state_members('Infected')
         
+        if self.type == 'Infected' and self.symptoms_type == 3:
+            result = random.choices(['Alive', 'Dead'],
+                                    weights = (0.95, 0.05))
+            if result == 'Dead':
+                self.type = 'Dead'
+            
         if self.type != 'Immune' and self.type != 'Infected':
             if len(infected_members) != 0:
                 contagius_total = 0
@@ -396,6 +404,7 @@ class Person:
                     self.type               = 'Infected'
                     self.days_till_symptoms = int(np.random.normal(loc   = 5,
                                                                    scale = 1))
+                    self.contagius          = 0.2
                     if self.days_till_symptoms < 0:
                         self.days_till_symptoms = 2
                         
@@ -423,12 +432,18 @@ class Person:
         else:
             self.resistance = self.resistance + average_resistance*(average_influence - self.influence)*0.1
             
-        ## -------------------------------------------------------------------
+        ## --------------------------------------------------------------------
         
     def routine_transportation(self):
         
         ## ------------------------ Infection Gamble --------------------------
         
+        if self.type == 'Infected' and self.symptoms_type == 3:
+            result = random.choices(['Alive', 'Dead'],
+                                    weights = (0.95, 0.05))
+            if result == 'Dead':
+                self.type = 'Dead'
+                
         if self.transportation == 'Public' and self.type != 'Immune' and self.type != 'Infected':
             
             domestic_region         = self.house.domestic_region
@@ -444,6 +459,7 @@ class Person:
                 self.type               = 'Infected'
                 self.days_till_symptoms = int(np.random.normal(loc   = 5,
                                                                scale = 1))
+                self.contagius          = 0.2
                 if self.days_till_symptoms < 0:
                     self.days_till_symptoms = 2
                  
@@ -457,6 +473,12 @@ class Person:
         infected_coworkers = []
         contagius_total    = 0
         
+        if self.type == 'Infected' and self.symptoms_type == 3:
+            result = random.choices(['Alive', 'Dead'],
+                                    weights = (0.95, 0.05))
+            if result == 'Dead':
+                self.type = 'Dead'
+                
         if self.type != 'Immune' and self.type != 'Infected':
             for coworker in coworkers:
                 if coworker.type == 'Infected':
@@ -475,7 +497,8 @@ class Person:
                 if result_infection == 'Infected':
                     self.type               = 'Infected'
                     self.days_till_symptoms = int(np.random.normal(loc   = 5,
-                                                                   scale = 1))
+                                                                   scale = 1))                    
+                    self.contagius          = 0.2
                     if self.days_till_symptoms < 0:
                         self.days_till_symptoms = 2
         
@@ -509,6 +532,12 @@ class Person:
         ## ------------------------ Influence Gamble -------------------------
         
         if self.workplace.region == 'Commercial':
+            if self.type == 'Infected' and self.symptoms_type == 3:
+                result = random.choices(['Alive', 'Dead'],
+                                        weights = (0.95, 0.05))
+                if result == 'Dead':
+                    self.type = 'Dead'
+                
             if self.lunch_routine == 'Restaurant' and self.type != 'Immune' and self.type != 'Infected':
                 
                 region                      = self.workplace.region
@@ -534,6 +563,7 @@ class Person:
                     self.type               = 'Infected'
                     self.days_till_symptoms = int(np.random.normal(loc   = 5,
                                                                    scale = 1))
+                    self.contagius          = 0.2
                     if self.days_till_symptoms < 0:
                         self.days_till_symptoms = 2
                         
